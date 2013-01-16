@@ -13,8 +13,9 @@ class PlayMineSweeper
     else
       begin
         m = YAML.load(File.open(filename))
-      rescue ArgumentError => e
+      rescue Errno::ENOENT => e
         puts "Could not parse YAML: #{e.message}"
+        m = MineSweeper.new
       end
     end
     m.play
@@ -24,7 +25,7 @@ end
 
 class MineSweeper
 
-  VALID_MOVE_TYPES = ["f", "u", "r", "s", "q"]
+  VALID_MOVE_TYPES = ["f", "u", "r"]
 
   attr_reader :board
 
@@ -41,9 +42,8 @@ class MineSweeper
     populate_mines
     figure_out_cell_numbers
   end
-def
 
-   play
+  def play
 
     puts "\nInitial board:\n"
     print_secret_board
@@ -94,15 +94,15 @@ def
     puts "e.g. 'f' to place a flag or 'r' to reveal cell"
     puts "'s' will save the board and 'q' will quit the game."
     until VALID_MOVE_TYPES.include?(move_type)
-      #print "#{$stdin}"
       move_type = gets.chomp.downcase
+      if move_type == "s"
+        save_game_to_yaml
+      elsif move_type == "q"
+        exit
+      end
     end
 
-    if move_type == "s"
-      save_game_to_yaml
-    elsif move_type == "q"
-      exit
-    end
+
 
     move_type
   end
@@ -331,4 +331,4 @@ end
 
 # SCRIPT
 
-ms = PlayMineSweeper.new("gogo.yml")
+ms = PlayMineSweeper.new("go0go.yml")
