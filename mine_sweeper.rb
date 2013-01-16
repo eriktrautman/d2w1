@@ -1,22 +1,115 @@
+#!/usr/bin/env ruby
+
+# Erik and JT's Minesweeper
+
+require 'yaml'
+
+class PlayMineSweeper
+
+  def initialize(filename = "")
+
+    if filename.empty?
+      m = MineSweeper.new
+    else
+      begin
+        m = YAML.load(File.open(filename))
+      rescue ArgumentError => e
+        puts "Could not parse YAML: #{e.message}"
+      end
+    end
+    m.play
+  end
+
+end
+
 class MineSweeper
-  SIZE = 2
-  MINES = 1
-  VALID_MOVE_TYPES = ["f", "u", "r"]
+
+  VALID_MOVE_TYPES = ["f", "u", "r", "s", "q"]
 
   attr_reader :board
 
-  def initialize
+  def initialize(size = 9)
+    @size = size
     @board =[]
-    SIZE.times do |x|
+    @size.times do |x|
       tmp_array = []
-      SIZE.times {|y| tmp_array << Cell.new(x,y) }
+      @size.times {|y| tmp_array << Cell.new(x,y) }
       @board << tmp_array
     end
+    @mines = @size ** 2 / 8
+
+    populate_mines
+    figure_out_cell_numbers
+  end
+def
+
+   play
+
+    puts "\nInitial board:\n"
+    print_secret_board
+    until victory?
+      move = []
+
+      # get input where move is array [x,y] and move_type is char "f" or "r"
+      move_type, move = get_move
+
+      if explosion?(move, move_type)
+        puts  "\nKABOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOM!!!!!!!\n"
+        print_board
+        exit
+      else
+        execute_move(move, move_type)
+        print_board
+      end
+    end
+
+    puts "Winner."
+  end
+
+  private
+
+  # asks user for move and type, returns that pair
+  def get_move
+    [get_user_move_type, get_user_coordinates]
+  end
+
+  def get_user_coordinates
+    coords = [nil, nil]
+    puts "Enter coordinates in the format: y,x and in the valid range of 0 to #{@size-1}."
+    until valid_coords?(coords)
+      coords = gets.chomp.split(",").map(&:to_i)
+      puts "valid coords: #{coords.inspect} and are #{valid_coords?(coords)}"
+    end
+    coords
+  end
+
+  def valid_coords?(coords)
+    valid_range = (0..@size-1)
+    valid_range.include?(coords[0]) && valid_range.include?(coords[1])
+  end
+
+  def get_user_move_type
+    move_type = ""
+    puts "\nPick a valid move type, "
+    puts "e.g. 'f' to place a flag or 'r' to reveal cell"
+    puts "'s' will save the board and 'q' will quit the game."
+    until VALID_MOVE_TYPES.include?(move_type)
+      #print "#{$stdin}"
+      move_type = gets.chomp.downcase
+    end
+
+    if move_type == "s"
+      save_game_to_yaml
+    elsif move_type == "q"
+      exit
+    end
+
+    move_type
   end
 
   # pick random cells to flip the mine? switch ON
   def populate_mines
-    mines_remaining = MINES
+    mines_remaining = @mines
     until mines_remaining <= 0
       random_cell = @board.sample.sample
       unless random_cell.mine
@@ -30,74 +123,15 @@ class MineSweeper
   def figure_out_cell_numbers
     @board.each do |row|
       row.each do |cell|
-        cell.calculate_neighboring_mines(@board, SIZE)
+        cell.calculate_neighboring_mines(@board, @size)
       end
     end
 
-  end
-
-# good to begin!
-  def play
-    populate_mines
-    figure_out_cell_numbers
-    puts "initial board:"
-    print_secret_board
-    until victory?
-      move = []
-      #start loop
-
-      # get input where move is array [x,y] and move_type is char "f" or "r"
-      move, move_type = get_move
-
-      if explosion?(move, move_type)
-        puts  "\nKABOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOM!!!!!!!\n"
-        print_board
-        exit
-      else
-        execute_move(move, move_type)
-        print_board
-      end
-
-    end
-
-    puts "Winner."
-  end
-
-  private
-
-  # asks user for move and type, returns that pair
-  def get_move
-    [get_user_coordinates, get_user_move_type]
-  end
-
-  def get_user_coordinates
-    coords = [nil, nil]
-    puts "Enter coordinates in the format: y,x and in the valid range of 0 to #{SIZE-1}."
-    until valid_coords?(coords)
-      coords = gets.chomp.split(",").map(&:to_i)
-      puts "valid coords: #{coords.inspect} and are #{valid_coords?(coords)}"
-    end
-    coords
-  end
-
-  def valid_coords?(coords)
-    valid_range = (0..SIZE-1)
-    valid_range.include?(coords[0]) && valid_range.include?(coords[1])
-  end
-
-  def get_user_move_type
-    move_type = ""
-    puts "Pick a valid move type, "
-    puts "e.g. 'f' to place a flag or 'r' to reveal cell"
-    until VALID_MOVE_TYPES.include?(move_type)
-      move_type = gets.chomp.downcase
-    end
-    move_type
   end
 
   def victory?
-    SIZE.times do |x|
-      SIZE.times do |y|
+    @size.times do |x|
+      @size.times do |y|
         cell = @board[x][y]
         if cell.mine && !cell.flagged
           return false
@@ -158,7 +192,7 @@ class MineSweeper
         active_cell.revealed = true
 
         # AND put all its neighbors into the queue if they haven't yet been revealed
-        active_cell.get_neighbors(@board, SIZE).each do |cell| # would return an array of all valid neighbors
+        active_cell.get_neighbors(@board, @size).each do |cell| # would return an array of all valid neighbors
 
           # keep you if you haven't been revealed and are NOT in the queue already
           if !cell.revealed && !queue.include?(cell)
@@ -190,7 +224,7 @@ class MineSweeper
 
   def print_board
     print "   "
-    (0..SIZE-1).each {|num| print "#{num.to_s.rjust(2,"0")} "}
+    (0..@size-1).each {|num| print "#{num.to_s.rjust(2,"0")} "}
     puts
     @board.each_with_index do |row, row_index|
       print "#{row_index.to_s.rjust(2,"0")} "
@@ -212,7 +246,21 @@ class MineSweeper
 
   end
 
+  # Error checking????
+  def save_game_to_yaml
+    print "Save file as:"
+    filename = gets.chomp
+
+    File.open(filename, 'w') {|f| f.write(YAML.dump(self))}
+
+  end
+
+
 end
+
+
+
+
 
 class Cell
   attr_accessor :flagged, :mine, :neighboring_mines, :revealed
@@ -283,5 +331,4 @@ end
 
 # SCRIPT
 
-m = MineSweeper.new
-m.play
+ms = PlayMineSweeper.new("gogo.yml")
