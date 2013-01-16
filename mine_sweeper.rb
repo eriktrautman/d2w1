@@ -83,7 +83,7 @@ class MineSweeper
     coords
   end
 
-  def valid_coords?(coords)
+  def valid_coords?(coords) # elegant code here
     valid_range = (0..@size-1)
     valid_range.include?(coords[0]) && valid_range.include?(coords[1])
   end
@@ -120,7 +120,7 @@ class MineSweeper
   end
 
   # go through all cells and calculate their number of neighboring mines
-  def figure_out_cell_numbers
+  def figure_out_cell_numbers # nitpicky, but methode name could be more indicative of it's goal: 'get_neighboring_mines'
     @board.each do |row|
       row.each do |cell|
         cell.calculate_neighboring_mines(@board, @size)
